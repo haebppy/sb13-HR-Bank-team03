@@ -32,8 +32,11 @@ public class BasicDepartmentService implements DepartmentService {
         // 제약 조건 - 이름은 중복 될 수 없음
         if (departmentRepository.existsByDepartmentName(newName)) throw new DepartmentExisted("이름이 이미 존재합니다. - " + newName,"Department already exists");
 
+        Department dpt = departmentRepository.save(new Department(newName,newDescription,newDate));
+        System.out.println(dpt.getId());
         return mapper.toDto(
-                departmentRepository.save(new Department(newName,newDescription,newDate))
+                dpt
+                ,0
         );
     }
 
