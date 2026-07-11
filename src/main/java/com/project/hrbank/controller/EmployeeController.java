@@ -32,12 +32,18 @@ public class EmployeeController implements EmployeeControllerDoc {
         return ResponseEntity.ok(employeeService.countEmployees(status, fromDate, toDate));
     }
 
-
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<EmployeeDto> create(
             @RequestPart(name = "employee") EmployeeCreateRequest request,
             @RequestPart(name = "profile", required = false) MultipartFile file
-            ){
+    ){
         return ResponseEntity.ok(employeeService.create(request,file));
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteEmployee(@PathVariable Long id) {
+        employeeService.deleteEmployee(id);
+
+        return ResponseEntity.noContent().build();
     }
 }
