@@ -1,8 +1,13 @@
 package com.project.hrbank.service;
 
+import com.project.hrbank.domain.Employee;
 import com.project.hrbank.domain.EmployeeStatus;
+import com.project.hrbank.domain.FileMeta;
+import com.project.hrbank.infra.Structure;
 import com.project.hrbank.repository.EmployeeRepository;
+import com.project.hrbank.repository.FileMetaRepository;
 import com.project.hrbank.service.basic.BasicEmployeeService;
+import lombok.NoArgsConstructor;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -11,23 +16,31 @@ import org.mockito.Mock;
 import org.mockito.InjectMocks;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 
+import java.io.IOException;
 import java.time.Instant;
 import java.time.LocalDate;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class EmployeeServiceTest {
 
     @Mock
     private EmployeeRepository employeeRepository;
+
+    @Mock
+    private FileMetaRepository fileMetaRepository;
+
+    @Mock
+    private Structure structure;
 
     @InjectMocks
     private BasicEmployeeService employeeService;
@@ -84,4 +97,44 @@ class EmployeeServiceTest {
         verify(employeeRepository).countByStatusAndHireDateRange(
                 null, null, Instant.parse("2024-02-01T00:00:00Z"));
     }
+
+    @Test
+    @DisplayName("프로필 이미지가 있으면 파일과 FileMeta를 함께 삭제한다")
+    void deleteEmployee_withProfileImage() {
+        Employee employee = mock(Employee.class); // Employee 껍데기 객체 생성
+        FileMeta fileMeta = mock(FileMeta.class); // FileMeta 껍데기 객체 생성
+
+        // employee.getProfileImaged()를 호출하면 fileMeta를 return
+        when(employee.getProfileImaged()).thenReturn(fileMeta);
+        /*
+        fileMeta.getFileName()을 호출하면 uuid_profile.png를 stub
+        structure.delete() 호출할 때 uuid_profile.png로 넘어가는지 확인
+        */
+        when(fileMeta.getFileName()).thenReturn("uuid_profile.png");
+        // repo한테 id=1로 조회 시 employee가 있다. -> employeeRepository.findById(id).orElseThrow()
+        when(employeeRepository.findById(1L)).thenReturn(Optional.of(employee));
+
+        // deleteEmployee() 메서드 실행
+        employeeService.deleteEmployee(1L);
+
+        // uuid_profile.png 호출됐는지 검증
+        verify(structure).delete("uuid_profile.png");
+        // delete()가 호출됐는지 검증
+        verify(fileMetaRepository).delete(fileMeta);
+    }
+
+    @Test
+    @DisplayName("프로필 이미지가 없으면 파일/FileMeta 삭제를 시도하지 않는다")
+    void deleteEmployee_withoutProfileImage() {
+        Employee employee = mock(Employee.class);
+        when(employee.getProfileImaged()).thenReturn(null);
+        when(employeeRepository.findById(1L)).thenReturn(Optional.of(employee));
+
+        employeeService.deleteEmployee(1L);
+
+        // FileMeta 삭제가 한 번도 호출되지 않았는가 확인 : never() -> times(0)
+        verify(structure, never()).delete(any());
+        verify(fileMetaRepository, never()).delete(any());
+    }
+
 }

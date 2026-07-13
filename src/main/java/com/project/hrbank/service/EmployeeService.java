@@ -10,6 +10,8 @@ import java.time.LocalDate;
 public interface EmployeeService {
 
     long countEmployees(EmployeeStatus status, LocalDate fromDate, LocalDate toDate);
+
     EmployeeDto create(EmployeeCreateRequest request, MultipartFile file);
 
+    void deleteEmployee(Long id, String remoteIp);
 }
