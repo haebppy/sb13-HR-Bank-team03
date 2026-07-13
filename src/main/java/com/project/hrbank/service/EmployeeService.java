@@ -13,5 +13,5 @@ public interface EmployeeService {
 
     EmployeeDto create(EmployeeCreateRequest request, MultipartFile file);
 
-    void deleteEmployee(Long id);
+    void deleteEmployee(Long id, String remoteIp);
 }

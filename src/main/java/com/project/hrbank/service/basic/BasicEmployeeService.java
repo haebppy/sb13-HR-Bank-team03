@@ -1,10 +1,7 @@
 package com.project.hrbank.service.basic;
 
 
-import com.project.hrbank.domain.Department;
-import com.project.hrbank.domain.Employee;
-import com.project.hrbank.domain.EmployeeStatus;
-import com.project.hrbank.domain.FileMeta;
+import com.project.hrbank.domain.*;
 import com.project.hrbank.dto.request.EmployeeCreateRequest;
 import com.project.hrbank.dto.response.EmployeeDto;
 import com.project.hrbank.exception.BaseException;
@@ -13,6 +10,7 @@ import com.project.hrbank.exception.EmployeeDuplicateException;
 import com.project.hrbank.infra.Structure;
 import com.project.hrbank.mapper.DtoMapper;
 import com.project.hrbank.repository.DepartmentRepository;
+import com.project.hrbank.repository.EmployeeHistoryRepository;
 import com.project.hrbank.repository.EmployeeRepository;
 import com.project.hrbank.repository.FileMetaRepository;
 import com.project.hrbank.service.EmployeeService;
@@ -31,6 +29,7 @@ import java.time.*;
 public class BasicEmployeeService implements EmployeeService {
 
     private final EmployeeRepository employeeRepository;
+    private final EmployeeHistoryRepository employeeHistoryRepository;
     private final DepartmentRepository departmentRepository;
     private final FileMetaRepository fileMetaRepository;
     private final Structure structure;
@@ -75,11 +74,14 @@ public class BasicEmployeeService implements EmployeeService {
                 status,
                 fileMeta
         ));
+
+        // 히스토리 추가
+
         return mapper.toDto(emp);
     }
 
     @Override
-    public void deleteEmployee(Long id) {
+    public void deleteEmployee(Long id, String remoteIp) {
         Employee employee = employeeRepository.findById(id)
                 .orElseThrow(() -> new IllegalArgumentException("직원을 찾을 수 없습니다. ID: " + id));
 
@@ -92,10 +94,22 @@ public class BasicEmployeeService implements EmployeeService {
                 employee.getPosition(),
                 employee.getHireDate(),
                 EmployeeStatus.RESIGNED,
-                null
+                null,
+                Instant.now()
         );
 
-        employeeRepository.save(employee);
+        Employee emp = employeeRepository.save(employee);
+
+        // EmployeeHistory 로그 추가
+        employeeHistoryRepository.save(new EmployeeHistory(
+                emp,
+                emp.getDepartment(),
+                EmployeeHistoryType.EMPLOYEE_DELETED,
+                "직원 삭제",
+                null,
+                remoteIp
+                ));
+
 
         if (profileImage != null) {
             structure.delete(profileImage.getFileName());

@@ -5,6 +5,7 @@ import com.project.hrbank.domain.EmployeeStatus;
 import com.project.hrbank.dto.request.EmployeeCreateRequest;
 import com.project.hrbank.dto.response.EmployeeDto;
 import com.project.hrbank.service.EmployeeService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.format.annotation.DateTimeFormat;
@@ -41,8 +42,12 @@ public class EmployeeController implements EmployeeControllerDoc {
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteEmployee(@PathVariable Long id) {
-        employeeService.deleteEmployee(id);
+    public ResponseEntity<Void> deleteEmployee(
+            HttpServletRequest request,
+            @PathVariable Long id
+    ) {
+        String ip = request.getRemoteAddr(); // ip
+        employeeService.deleteEmployee(id,ip);
 
         return ResponseEntity.noContent().build();
     }

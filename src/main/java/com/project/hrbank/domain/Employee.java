@@ -41,6 +41,8 @@ public class Employee extends Base {
     @JoinColumn(name = "profile_imaged_id")
     private FileMeta profileImaged;
 
+    private Instant deletedAt;
+
     public static Employee create(String name, Department department, String employeeNumber,
                                   String email, String position, Instant hireDate,
                                   EmployeeStatus status, FileMeta profileImaged) {
@@ -57,7 +59,7 @@ public class Employee extends Base {
     }
 
     public void update(String name, Department department, String email, String position,
-                       Instant hireDate, EmployeeStatus status, FileMeta profileImaged) {
+                       Instant hireDate, EmployeeStatus status, FileMeta profileImaged, Instant deletedAt) {
         this.name = name;
         this.department = department;
         this.email = email;
@@ -65,5 +67,6 @@ public class Employee extends Base {
         this.hireDate = hireDate;
         this.status = status;
         this.profileImaged = profileImaged;
+        this.deletedAt = deletedAt;
     }
 }
