@@ -2,7 +2,7 @@ spring:
   application:
     name: hrbank
   datasource:
-    url: jdbc:postgresql://localhost:5432/onestep
+    url: jdbc:postgresql://localhost:5432/hrbank
     username: onestep
     password: 1234
 

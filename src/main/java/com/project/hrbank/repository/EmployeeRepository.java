@@ -2,6 +2,8 @@ package com.project.hrbank.repository;
 
 import com.project.hrbank.domain.Employee;
 import com.project.hrbank.domain.EmployeeStatus;
+
+import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -21,8 +23,11 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
         AND (:toDate IS NULL OR e.hireDate < :toDate)
         """)
     long countByStatusAndHireDateRange(
-            @Param("status") EmployeeStatus status,
-            @Param("fromDate") Instant fromDate,
-            @Param("toDate") Instant toDate
+        @Param("status") EmployeeStatus status,
+        @Param("fromDate") Instant fromDate,
+        @Param("toDate") Instant toDate
     );
+
+
+
 }
