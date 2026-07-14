@@ -1,5 +1,13 @@
 package com.project.hrbank.dto.request;
 
-public class EmployeeCreateRequest {
+import java.time.LocalDate;
 
+public record EmployeeCreateRequest(
+    String name,
+    String email,
+    Long departmentId,
+    String position,
+    LocalDate hireDate,
+    String memo
+) {
 }

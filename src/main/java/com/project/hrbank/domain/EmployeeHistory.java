@@ -33,11 +33,11 @@ public class EmployeeHistory extends Base{
     private String ipAddress;
 
     public EmployeeHistory(Employee employee,
-                           Department department,
-                           EmployeeHistoryType type,
-                           String changeDetail,
-                           String memo,
-                           String ipAddress) {
+        Department department,
+        EmployeeHistoryType type,
+        String changeDetail,
+        String memo,
+        String ipAddress) {
 
         this.employee = employee;
         this.department = department;

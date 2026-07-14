@@ -18,7 +18,8 @@ public class ExceptionController {
 
     // status code - 400 error
     @ExceptionHandler({
-        DepartmentNameDuplicateException.class
+        DepartmentNameDuplicateException.class,
+        EmployeeDuplicateException.class
     })
     public ProblemDetail BadRequestException(BaseException e, WebRequest request) {
         ProblemDetail pd = ProblemDetail.forStatusAndDetail(BAD_REQUEST, e.getMessage());
@@ -52,7 +53,7 @@ public class ExceptionController {
 
     // 500 error (default)
     @ExceptionHandler({
-            BaseException.class,
+        BaseException.class,
     })
     public ProblemDetail InternalException(BaseException e, WebRequest request) {
 

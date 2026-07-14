@@ -76,15 +76,19 @@ public class LocalStructure implements Structure {
         Path path = rootPath.resolve(savedFileName);
         InputStream inputStream = get(path);
         return ResponseEntity.status(HttpStatus.OK)
-                .body(
-                        new InputStreamResource(inputStream)
-                );
+            .body(
+                new InputStreamResource(inputStream)
+            );
     }
 
-//    @Override
-//    public void delete(Long fileId) {}
+    @Override
+    public void delete(String savePath) {
+        Path path = rootPath.resolve(savePath);
 
-    private Path resolvePath(Long fileId) {
-        return rootPath.resolve(fileId.toString());
+        try {
+            Files.deleteIfExists(path);
+        } catch (IOException e) {
+            throw new UncheckedIOException("파일 삭제에 실패했습니다: " + savePath, e);
+        }
     }
 }

@@ -2,8 +2,6 @@ package com.project.hrbank.repository;
 
 import com.project.hrbank.domain.Employee;
 import com.project.hrbank.domain.EmployeeStatus;
-
-import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -14,7 +12,7 @@ import java.time.Instant;
 @Repository
 public interface EmployeeRepository extends JpaRepository<Employee, Long> {
 
-    long countByDepartment_Id(Long departmentId);
+    int countByDepartmentId(Long departmentId);
 
     @Query("""
         SELECT COUNT(e) FROM Employee e
@@ -29,5 +27,6 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long> {
     );
 
 
+    boolean existsByEmail(String email);
 
 }
