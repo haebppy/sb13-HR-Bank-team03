@@ -7,6 +7,7 @@ import com.project.hrbank.dto.response.EmployeeDto;
 import com.project.hrbank.exception.BaseException;
 import com.project.hrbank.exception.DepartmentNotExistException;
 import com.project.hrbank.exception.EmployeeDuplicateException;
+import com.project.hrbank.exception.EmployeeNotExistException;
 import com.project.hrbank.infra.Structure;
 import com.project.hrbank.mapper.DtoMapper;
 import com.project.hrbank.repository.DepartmentRepository;
@@ -78,6 +79,14 @@ public class BasicEmployeeService implements EmployeeService {
         // 히스토리 추가
 
         return mapper.toDto(emp);
+    }
+
+    @Transactional(readOnly = true)
+    @Override
+    public EmployeeDto findById(Long id) {
+        Employee employee = getEmployeeOrExcept(id);
+
+        return mapper.toDto(employee);
     }
 
     @Override
@@ -157,4 +166,13 @@ public class BasicEmployeeService implements EmployeeService {
             throw new BaseException("프로필 저장 에러");
         }
     }
+
+    private Employee getEmployeeOrExcept(Long employeeId) {
+        Employee employee = employeeRepository.findById(employeeId).orElse(null);
+        if (employee == null) {
+            throw new EmployeeNotExistException("직원이 존재하지 않습니다. - " + employeeId, "Employee not exists");
+        }
+        return employee;
+    }
+
 }

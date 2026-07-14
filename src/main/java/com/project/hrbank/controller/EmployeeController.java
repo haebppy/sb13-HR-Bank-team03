@@ -41,6 +41,13 @@ public class EmployeeController implements EmployeeControllerDoc {
         return ResponseEntity.ok(employeeService.create(request,file));
     }
 
+    @GetMapping("/{id}")
+    public ResponseEntity<EmployeeDto> findById(
+            @PathVariable Long id
+    ) {
+        return ResponseEntity.ok(employeeService.findById(id));
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteEmployee(
             HttpServletRequest request,
@@ -51,4 +58,6 @@ public class EmployeeController implements EmployeeControllerDoc {
 
         return ResponseEntity.noContent().build();
     }
+
+
 }
