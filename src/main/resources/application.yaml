@@ -5,7 +5,7 @@ spring:
   datasource:
     url: jdbc:postgresql://localhost:5432/hrbank
     username: onestep
-    password: 1234
+    password: postgres
     driver-class-name: org.postgresql.Driver
 
   jpa:
@@ -33,3 +33,4 @@ hrbank:
     type: local
     local:
       root-path: ./storage
+  batch: 3600
