@@ -16,7 +16,7 @@ import java.time.Instant;
 @Repository
 public interface EmployeeRepository extends JpaRepository<Employee, Long>, EmployeePagingRepository {
 
-    int countByDepartmentId(Long departmentId);
+    int countByDepartmentIdAndDeletedAtIsNull(Long departmentId);
 
     @Query("""
         SELECT COUNT(e) FROM Employee e
