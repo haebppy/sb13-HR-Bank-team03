@@ -38,7 +38,6 @@ out/
 .vscode/
 
 gradle.properties
-
 .storage
 storage
 
