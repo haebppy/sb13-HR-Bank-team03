@@ -9,6 +9,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
+import java.util.List;
 
 import java.time.Instant;
 
@@ -29,6 +30,27 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>, Emplo
             @Param("toDate") Instant toDate
     );
 
+    @Query("""
+    SELECT e.department.departmentName, COUNT(e)
+    FROM Employee e
+    WHERE e.status = :status
+    GROUP BY e.department.departmentName
+    ORDER BY e.department.departmentName
+    """)
+    List<Object[]> countGroupByDepartment(
+            @Param("status") EmployeeStatus status
+    );
+
+    @Query("""
+    SELECT e.position, COUNT(e)
+    FROM Employee e
+    WHERE e.status = :status
+    GROUP BY e.position
+    ORDER BY e.position
+    """)
+    List<Object[]> countGroupByPosition(
+            @Param("status") EmployeeStatus status
+    );
 
     boolean existsByEmail(String email);
 
