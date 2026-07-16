@@ -14,6 +14,8 @@ import org.springframework.data.domain.Slice;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 @Service
@@ -122,5 +124,18 @@ public class BasicEmployeeHistoryService implements EmployeeHistoryService {
             case "DELETE" -> EmployeeHistoryType.EMPLOYEE_DELETED;
             default -> null;
         };
+    }
+
+    @Override
+    public long countChangeLogs(Instant fromDate, Instant toDate) {
+        Instant to = toDate != null
+                ? toDate
+                : Instant.now();
+
+        Instant from = fromDate != null
+                ? fromDate
+                : to.minus(7, ChronoUnit.DAYS);
+
+        return employeeHistoryRepository.countByCreateAtBetween(from, to);
     }
 }

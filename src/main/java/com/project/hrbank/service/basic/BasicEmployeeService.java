@@ -296,13 +296,4 @@ public class BasicEmployeeService implements EmployeeService {
             throw new BaseException("프로필 저장 에러");
         }
     }
-
-    private Employee getEmployeeOrExcept(Long employeeId) {
-        Employee employee = employeeRepository.findById(employeeId).orElse(null);
-        if (employee == null) {
-            throw new EmployeeNotExistException("직원이 존재하지 않습니다. - " + employeeId, "Employee not exists");
-        }
-        return employee;
-    }
-
 }
