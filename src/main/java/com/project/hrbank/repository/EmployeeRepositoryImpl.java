@@ -30,11 +30,11 @@ public class EmployeeRepositoryImpl implements EmployeePagingRepository {
     String field;
 
     // 이름 또는 이메일 검색
-    if (StringUtils.hasText(request.keyword())) {
+    if (StringUtils.hasText(request.nameOrEmail())) {
       jpql.append("""
         AND (
-            LOWER(e.name) LIKE LOWER(:keyword)
-            OR LOWER(e.email) LIKE LOWER(:keyword)
+            LOWER(e.name) LIKE LOWER(:nameOrEmail)
+            OR LOWER(e.email) LIKE LOWER(:nameOrEmail)
         )
         """);
     }
@@ -144,11 +144,11 @@ public class EmployeeRepositoryImpl implements EmployeePagingRepository {
 
 
 
-    if (StringUtils.hasText(request.keyword())) {
+    if (StringUtils.hasText(request.nameOrEmail())) {
 
       query.setParameter(
-          "keyword",
-          "%" + request.keyword() + "%"
+          "nameOrEmail",
+          "%" + request.nameOrEmail() + "%"
       );
     }
 
