@@ -39,4 +39,15 @@ public interface EmployeeHistoryControllerDoc {
             @ApiResponse(responseCode = "500", description = "서버 오류")
     })
     EmployeeHistoryDetailResponse findById(Long id);
+
+    @Operation(summary = "직원 정보 수정 이력 건수 조회")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "조회 성공"),
+            @ApiResponse(responseCode = "400", description = "잘못된 날짜 범위"),
+            @ApiResponse(responseCode = "500", description = "서버 오류")
+    })
+    ResponseEntity<Long> countChangeLogs(
+            @RequestParam(required = false) Instant fromDate,
+            @RequestParam(required = false) Instant toDate
+    );
 }

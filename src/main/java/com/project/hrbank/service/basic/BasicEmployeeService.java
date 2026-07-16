@@ -340,5 +340,4 @@ public class BasicEmployeeService implements EmployeeService {
             throw new BaseException("프로필 저장 에러");
         }
     }
-
 }
