@@ -5,7 +5,6 @@ import com.project.hrbank.dto.request.EmployeeCreateRequest;
 import com.project.hrbank.dto.request.EmployeeSearchRequest;
 import com.project.hrbank.dto.response.CursorPageResponse;
 import com.project.hrbank.dto.request.EmployeeUpdateRequest;
-import com.project.hrbank.dto.response.CursorPageResponse;
 import com.project.hrbank.dto.response.EmployeeDistributionDto;
 import com.project.hrbank.dto.response.EmployeeDto;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +20,7 @@ public interface EmployeeService {
             LocalDate fromDate,
             LocalDate toDate
     );
+
 
     EmployeeDto create(EmployeeCreateRequest request, MultipartFile file, String ip);
 
@@ -47,4 +47,5 @@ public interface EmployeeService {
             String groupBy,
             EmployeeStatus status
     );
+
 }
