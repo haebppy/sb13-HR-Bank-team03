@@ -19,6 +19,14 @@ public interface EmployeeStatsControllerDoc {
       @ApiResponse(
           responseCode = "200",
           description = "직원 수 추이 조회 성공"
+      ),
+      @ApiResponse(
+          responseCode = "400",
+          description = "잘못된 요청 또는 지원하지 않는 시간 단위"
+      ),
+      @ApiResponse(
+          responseCode = "500",
+          description = "서버 오류"
       )
   })
   ResponseEntity<List<EmployeeTrendResponse>> getEmployeeTrend(

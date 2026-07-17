@@ -1,6 +1,5 @@
 package com.project.hrbank.service.basic;
 
-
 import com.project.hrbank.config.DataCondition;
 import com.project.hrbank.domain.*;
 import com.project.hrbank.dto.request.EmployeeCreateRequest;
@@ -37,323 +36,324 @@ import java.time.*;
 @Transactional
 public class BasicEmployeeService implements EmployeeService {
 
-    private final EmployeeRepository employeeRepository;
-    private final EmployeeHistoryRepository employeeHistoryRepository;
-    private final DepartmentRepository departmentRepository;
-    private final FileMetaRepository fileMetaRepository;
-    private final Structure structure;
-    private final DtoMapper mapper;
-    private final DataCondition dataCondition;
+  private final EmployeeRepository employeeRepository;
+  private final EmployeeHistoryRepository employeeHistoryRepository;
+  private final DepartmentRepository departmentRepository;
+  private final FileMetaRepository fileMetaRepository;
+  private final Structure structure;
+  private final DtoMapper mapper;
+  private final DataCondition dataCondition;
 
-    @Transactional(readOnly = true)
-    @Override
-    public long countEmployees(EmployeeStatus status, LocalDate fromDate, LocalDate toDate) {
-        Instant from = fromDate != null ? fromDate.atStartOfDay(ZoneOffset.UTC).toInstant() : null;
-        Instant to = toDate != null
-            ? toDate.plusDays(1).atStartOfDay(ZoneOffset.UTC).toInstant()
-            : (from != null ? Instant.now() : null);
+  @Override
+  @Transactional(readOnly = true)
+  public long countEmployees(
+      EmployeeStatus status,
+      LocalDate fromDate,
+      LocalDate toDate
+  ) {
 
-        return employeeRepository.countByStatusAndHireDateRange(status, from, to);
+    LocalDate today = LocalDate.now();
+    LocalDate firstDayOfMonth = today.withDayOfMonth(1);
+
+    LocalDate from = (fromDate != null) ? fromDate : firstDayOfMonth;
+    LocalDate to = (toDate != null) ? toDate : today;
+
+    return employeeRepository.countByStatusAndHireDateRange(status, from, to);
+  }
+
+  @Override
+  public EmployeeDto create(EmployeeCreateRequest request, MultipartFile file, String ip) {
+    String name = request.name();
+    String email = request.email();
+    // 이메일 중복 체크
+    checkEmail(email);
+
+    Department department = getDepartmentOrExcept(request.departmentId());
+    String employeeNumber = genRandomEmployeeNumber();
+    String position = request.position();
+
+    LocalDate hireDate = request.hireDate();
+
+    EmployeeStatus status = EmployeeStatus.ACTIVE;
+    FileMeta fileMeta = file == null ? null : getFileMetaFromMultipart(file);
+
+    String memo = request.memo();
+
+    Employee emp = employeeRepository.save(Employee.create(
+        name,
+        department,
+        employeeNumber,
+        email,
+        position,
+        hireDate,
+        status,
+        fileMeta
+    ));
+
+    dataCondition.flagSetChanged();
+    // 히스토리 추가
+
+    employeeHistoryRepository.save(new EmployeeHistory(
+        emp,
+        emp.getDepartment(),
+        EmployeeHistoryType.CREATED,
+        "직원 생성",
+        memo,
+        ip
+    ));
+
+    return mapper.toDto(emp);
+  }
+
+  @Transactional(readOnly = true)
+  @Override
+  public EmployeeDto findById(Long id) {
+    Employee employee = getEmployeeOrExcept(id);
+
+    return mapper.toDto(employee);
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public CursorPageResponse<EmployeeDto> getEmployeesWithCursor(
+      EmployeeSearchRequest request
+  ) {
+
+    List<Employee> employees =
+        employeeRepository.searchByCursor(request);
+
+    boolean hasNext =
+        employees.size() > request.size();
+
+    if (hasNext) {
+      employees.remove(request.size().intValue());
     }
 
-    @Override
-    public EmployeeDto create(EmployeeCreateRequest request, MultipartFile file, String ip){
-        String name = request.name();
-        String email = request.email();
-        // 이메일 중복 체크
-        checkEmail(email);
+    List<EmployeeDto> content =
+        employees.stream()
+            .map(mapper::toDto)
+            .collect(Collectors.toList());
 
-        Department department = getDepartmentOrExcept(request.departmentId());
-        String employeeNumber = genRandomEmployeeNumber();
-        String position = request.position();
+    String nextCursor = null;
+    Long nextIdAfter = null;
 
-        LocalDate hireDate = request.hireDate();
+    if (!content.isEmpty()) {
 
-        EmployeeStatus status = EmployeeStatus.ACTIVE;
-        FileMeta fileMeta = file == null ? null : getFileMetaFromMultipart(file);
+      EmployeeDto last =
+          content.get(content.size() - 1);
 
-        String memo = request.memo();
+      if ("name".equalsIgnoreCase(request.sortField())) {
 
-        Employee emp = employeeRepository.save(Employee.create(
-            name,
-            department,
-            employeeNumber,
-            email,
-            position,
-            hireDate,
-            status,
-            fileMeta
-        ));
+        nextCursor = last.name();
 
-        dataCondition.flagSetChanged();
-        // 히스토리 추가
+      } else if ("employeeNumber"
+          .equalsIgnoreCase(request.sortField())) {
 
-        employeeHistoryRepository.save(new EmployeeHistory(
-                emp,
-                emp.getDepartment(),
-                EmployeeHistoryType.CREATED,
-                "직원 생성",
-                memo,
-                ip
-        ));
+        nextCursor = last.employeeNumber();
 
-        return mapper.toDto(emp);
+      } else {
+
+        nextCursor = last.hireDate().toString();
+      }
+      nextIdAfter = last.id();
     }
 
-    @Transactional(readOnly = true)
-    @Override
-    public EmployeeDto findById(Long id) {
-        Employee employee = getEmployeeOrExcept(id);
+    long totalElements =
+        employeeRepository.countEmployees();
 
-        return mapper.toDto(employee);
+    return new CursorPageResponse<>(
+        content,
+        nextCursor,
+        nextIdAfter,
+        request.size(),
+        totalElements,
+        hasNext
+    );
+  }
+
+  @Override
+  public void deleteEmployee(Long id, String remoteIp) {
+    Employee employee = getEmployeeOrExcept(id);
+
+    FileMeta profileImage = employee.getProfileImaged();
+
+    employee.update(
+        employee.getName(),
+        employee.getDepartment(),
+        employee.getEmail(),
+        employee.getPosition(),
+        employee.getHireDate(),
+        EmployeeStatus.RESIGNED,
+        null,
+        Instant.now()
+    );
+
+    Employee emp = employeeRepository.save(employee);
+
+    // EmployeeHistory 로그 추가
+    employeeHistoryRepository.save(new EmployeeHistory(
+        emp,
+        emp.getDepartment(),
+        EmployeeHistoryType.DELETED,
+        "직원 삭제",
+        null,
+        remoteIp
+    ));
+
+    if (profileImage != null) {
+      structure.delete(profileImage.getFileName());
+      fileMetaRepository.delete(profileImage);
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public CursorPageResponse<EmployeeDto> getEmployeesWithCursor(
-        EmployeeSearchRequest request
-    ) {
+    dataCondition.flagSetChanged();
+  }
 
-        List<Employee> employees =
-            employeeRepository.searchByCursor(request);
+  @Override
+  public EmployeeDto update(Long id, EmployeeUpdateRequest request, MultipartFile file,
+      String remoteIp) {
+    Employee employee = getEmployeeOrExcept(id);
 
-
-        boolean hasNext =
-            employees.size() > request.size();
-
-
-        if (hasNext) {
-            employees.remove(request.size().intValue());
-        }
-
-
-        List<EmployeeDto> content =
-            employees.stream()
-                .map(mapper::toDto)
-                .collect(Collectors.toList());
-
-
-        String nextCursor = null;
-        Long nextIdAfter = null;
-
-
-        if (!content.isEmpty()) {
-
-            EmployeeDto last =
-                content.get(content.size() - 1);
-
-
-            if ("name".equalsIgnoreCase(request.sortField())) {
-
-                nextCursor = last.name();
-
-            } else if ("employeeNumber"
-                .equalsIgnoreCase(request.sortField())) {
-
-                nextCursor = last.employeeNumber();
-
-            } else {
-
-                nextCursor = last.hireDate().toString();
-            }
-            nextIdAfter = last.id();
-        }
-
-
-        long totalElements =
-            employeeRepository.countEmployees();
-
-
-        return new CursorPageResponse<>(
-            content,
-            nextCursor,
-            nextIdAfter,
-            request.size(),
-            totalElements,
-            hasNext
-        );
+    String newEmail = request.email() != null ? request.email() : employee.getEmail();
+    if (!newEmail.equals(employee.getEmail())) {
+      checkEmail(newEmail);
     }
 
-    @Override
-    public void deleteEmployee(Long id, String remoteIp) {
-        Employee employee = getEmployeeOrExcept(id);
+    Department newDepartment = request.departmentId() != null
+        ? getDepartmentOrExcept(request.departmentId())
+        : employee.getDepartment();
 
-        FileMeta profileImage = employee.getProfileImaged();
+    String newName = request.name() != null ? request.name() : employee.getName();
+    String newPosition = request.position() != null ? request.position() : employee.getPosition();
+    LocalDate newHireDate =
+        request.hireDate() != null ? request.hireDate() : employee.getHireDate();
+    EmployeeStatus newStatus = request.status() != null ? request.status() : employee.getStatus();
 
-        employee.update(
-            employee.getName(),
-            employee.getDepartment(),
-            employee.getEmail(),
-            employee.getPosition(),
-            employee.getHireDate(),
-            EmployeeStatus.RESIGNED,
-            null,
-            Instant.now()
-        );
-
-        Employee emp = employeeRepository.save(employee);
-
-        // EmployeeHistory 로그 추가
-        employeeHistoryRepository.save(new EmployeeHistory(
-            emp,
-            emp.getDepartment(),
-            EmployeeHistoryType.DELETED,
-            "직원 삭제",
-            null,
-            remoteIp
-        ));
-
-
-        if (profileImage != null) {
-            structure.delete(profileImage.getFileName());
-            fileMetaRepository.delete(profileImage);
-        }
-
-        dataCondition.flagSetChanged();
+    FileMeta oldProfileImage = employee.getProfileImaged();
+    FileMeta newProfileImage = oldProfileImage;
+    if (file != null && !file.isEmpty()) {
+      newProfileImage = getFileMetaFromMultipart(file);
     }
 
-    @Override
-    public EmployeeDto update(Long id, EmployeeUpdateRequest request, MultipartFile file, String remoteIp) {
-        Employee employee = getEmployeeOrExcept(id);
+    employee.update(
+        newName,
+        newDepartment,
+        newEmail,
+        newPosition,
+        newHireDate,
+        newStatus,
+        newProfileImage,
+        employee.getDeletedAt()
+    );
 
-        String newEmail = request.email() != null ? request.email() : employee.getEmail();
-        if (!newEmail.equals(employee.getEmail())) {
-            checkEmail(newEmail);
-        }
+    Employee saved = employeeRepository.save(employee);
 
-        Department newDepartment = request.departmentId() != null
-                ? getDepartmentOrExcept(request.departmentId())
-                : employee.getDepartment();
+    employeeHistoryRepository.save(new EmployeeHistory(
+        saved,
+        saved.getDepartment(),
+        EmployeeHistoryType.UPDATED,
+        "직원 수정",
+        request.memo(),
+        remoteIp
+    ));
 
-        String newName = request.name() != null ? request.name() : employee.getName();
-        String newPosition = request.position() != null ? request.position() : employee.getPosition();
-        LocalDate newHireDate = request.hireDate() != null ? request.hireDate() : employee.getHireDate();
-        EmployeeStatus newStatus = request.status() != null ? request.status() : employee.getStatus();
-
-        FileMeta oldProfileImage = employee.getProfileImaged();
-        FileMeta newProfileImage = oldProfileImage;
-        if (file != null && !file.isEmpty()) {
-            newProfileImage = getFileMetaFromMultipart(file);
-        }
-
-        employee.update(
-                newName,
-                newDepartment,
-                newEmail,
-                newPosition,
-                newHireDate,
-                newStatus,
-                newProfileImage,
-                employee.getDeletedAt()
-        );
-
-        Employee saved = employeeRepository.save(employee);
-
-        employeeHistoryRepository.save(new EmployeeHistory(
-                saved,
-                saved.getDepartment(),
-                EmployeeHistoryType.UPDATED,
-                "직원 수정",
-                request.memo(),
-                remoteIp
-        ));
-
-        if (file != null && !file.isEmpty() && oldProfileImage != null) {
-            structure.delete(oldProfileImage.getFileName());
-            fileMetaRepository.delete(oldProfileImage);
-        }
-
-        dataCondition.flagSetChanged();
-
-        return mapper.toDto(saved);
+    if (file != null && !file.isEmpty() && oldProfileImage != null) {
+      structure.delete(oldProfileImage.getFileName());
+      fileMetaRepository.delete(oldProfileImage);
     }
 
-    @Override
-    @Transactional(readOnly = true)
-    public List<EmployeeDistributionDto> getEmployeeDistribution(
-            String groupBy,
-            EmployeeStatus status
-    ) {
-        List<Object[]> rows;
+    dataCondition.flagSetChanged();
 
-        if ("department".equalsIgnoreCase(groupBy)) {
-            rows = employeeRepository.countGroupByDepartment(status);
-        } else if ("position".equalsIgnoreCase(groupBy)) {
-            rows = employeeRepository.countGroupByPosition(status);
-        } else {
-            throw new IllegalArgumentException("지원하지 않는 groupBy입니다. : " + groupBy);
-        }
+    return mapper.toDto(saved);
+  }
 
-        long total = rows.stream()
-                .mapToLong(r -> (Long) r[1])
-                .sum();
+  @Override
+  @Transactional(readOnly = true)
+  public List<EmployeeDistributionDto> getEmployeeDistribution(
+      String groupBy,
+      EmployeeStatus status
+  ) {
+    List<Object[]> rows;
 
-        List<EmployeeDistributionDto> result = new ArrayList<>();
-
-        for (Object[] row : rows) {
-            String groupKey = (String) row[0];
-            Long count = (Long) row[1];
-
-            double percentage =
-                    total == 0
-                            ? 0.0
-                            : Math.round(count * 1000.0 / total) / 10.0;
-
-            result.add(
-                    new EmployeeDistributionDto(
-                            groupKey,
-                            count,
-                            percentage
-                    )
-            );
-        }
-
-        return result;
+    if ("department".equalsIgnoreCase(groupBy)) {
+      rows = employeeRepository.countGroupByDepartment(status);
+    } else if ("position".equalsIgnoreCase(groupBy)) {
+      rows = employeeRepository.countGroupByPosition(status);
+    } else {
+      throw new IllegalArgumentException("지원하지 않는 groupBy입니다. : " + groupBy);
     }
 
-    private Employee getEmployeeOrExcept(Long id) {
-        return employeeRepository.findById(id)
-                .orElseThrow(() -> new EmployeeNotExistException("직원이 존재하지 않습니다. - " + id, "Employee not exists"));
+    long total = rows.stream()
+        .mapToLong(r -> (Long) r[1])
+        .sum();
+
+    List<EmployeeDistributionDto> result = new ArrayList<>();
+
+    for (Object[] row : rows) {
+      String groupKey = (String) row[0];
+      Long count = (Long) row[1];
+
+      double percentage =
+          total == 0
+              ? 0.0
+              : Math.round(count * 1000.0 / total) / 10.0;
+
+      result.add(
+          new EmployeeDistributionDto(
+              groupKey,
+              count,
+              percentage
+          )
+      );
     }
 
-    private void checkEmail(String email){
-        if (employeeRepository.existsByEmail(email)){
-            throw new EmployeeDuplicateException(
-                "email was duplicated : " + email,
-                "이메일 중복"
-            );
-        }
-    }
+    return result;
+  }
 
-    private Department getDepartmentOrExcept(Long departmentId){
-        Department department = departmentRepository.findById(departmentId).orElse(null);
-        if (department == null) {
-            throw new DepartmentNotExistException("부서가 존재하지 않습니다. - " + departmentId,"Department not exists");
-        }
-        return department;
-    }
+  private Employee getEmployeeOrExcept(Long id) {
+    return employeeRepository.findById(id)
+        .orElseThrow(
+            () -> new EmployeeNotExistException("직원이 존재하지 않습니다. - " + id, "Employee not exists"));
+  }
 
-    private String genRandomEmployeeNumber(){
-        String tag = "EMP";
-        Instant now = Instant.now();
-        int year =  now.atZone(ZoneOffset.UTC).toLocalDate().getYear();
-        return tag + "-" + year + "-" + now.toEpochMilli();
+  private void checkEmail(String email) {
+    if (employeeRepository.existsByEmail(email)) {
+      throw new EmployeeDuplicateException(
+          "email was duplicated : " + email,
+          "이메일 중복"
+      );
     }
+  }
 
-    private FileMeta getFileMetaFromMultipart(MultipartFile file){
-        String originalFileName = saveProfileImage(file);
-        return fileMetaRepository.save(new FileMeta(
-            originalFileName,
-            file.getContentType(),
-            file.getSize()
-        ));
+  private Department getDepartmentOrExcept(Long departmentId) {
+    Department department = departmentRepository.findById(departmentId).orElse(null);
+    if (department == null) {
+      throw new DepartmentNotExistException("부서가 존재하지 않습니다. - " + departmentId,
+          "Department not exists");
     }
+    return department;
+  }
 
-    private String saveProfileImage(MultipartFile file){
-        try(InputStream in = file.getInputStream()){
-            return structure.put(file.getOriginalFilename(),in.readAllBytes());
-        } catch (IOException e){
-            throw new BaseException("프로필 저장 에러");
-        }
+  private String genRandomEmployeeNumber() {
+    String tag = "EMP";
+    Instant now = Instant.now();
+    int year = now.atZone(ZoneOffset.UTC).toLocalDate().getYear();
+    return tag + "-" + year + "-" + now.toEpochMilli();
+  }
+
+  private FileMeta getFileMetaFromMultipart(MultipartFile file) {
+    String originalFileName = saveProfileImage(file);
+    return fileMetaRepository.save(new FileMeta(
+        originalFileName,
+        file.getContentType(),
+        file.getSize()
+    ));
+  }
+
+  private String saveProfileImage(MultipartFile file) {
+    try (InputStream in = file.getInputStream()) {
+      return structure.put(file.getOriginalFilename(), in.readAllBytes());
+    } catch (IOException e) {
+      throw new BaseException("프로필 저장 에러");
     }
+  }
 }
