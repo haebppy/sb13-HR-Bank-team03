@@ -51,21 +51,31 @@ public class BasicEmployeeService implements EmployeeService {
     private final DtoMapper dtoMapper;
     private final DataCondition dataCondition;
 
-  @Override
   @Transactional(readOnly = true)
+  @Override
   public long countEmployees(
       EmployeeStatus status,
       LocalDate fromDate,
       LocalDate toDate
   ) {
 
-    LocalDate today = LocalDate.now();
-    LocalDate firstDayOfMonth = today.withDayOfMonth(1);
+    // 퇴사자는 항상 0명
+    if (status == EmployeeStatus.RESIGNED) {
+      return 0;
+    }
 
-    LocalDate from = (fromDate != null) ? fromDate : firstDayOfMonth;
-    LocalDate to = (toDate != null) ? toDate : today;
+    // 이번 달 입사한 재직 직원 수
+    if (status == EmployeeStatus.ACTIVE
+        && fromDate != null
+        && toDate == null) {
 
-    return employeeRepository.countByStatusAndHireDateRange(status, from, to);
+      LocalDate today = LocalDate.now();
+
+      return employeeRepository.countByStatusAndHireDateRange(status, fromDate, today);
+    }
+
+    // 일반 직원 수 조회 (ACTIVE + ON_LEAVE, RESIGNED 제외)
+    return employeeRepository.countByAllEmployee(status, fromDate, toDate);
   }
 
   @Override

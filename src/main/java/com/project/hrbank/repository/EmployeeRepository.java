@@ -24,6 +24,20 @@ public interface EmployeeRepository extends JpaRepository<Employee, Long>,
   @Query("""
       SELECT COUNT(e)
       FROM Employee e
+      WHERE e.status <> com.project.hrbank.domain.EmployeeStatus.RESIGNED
+      AND (:status IS NULL OR e.status = :status)
+      AND (:fromDate IS NULL OR e.hireDate >= :fromDate)
+      AND (:toDate IS NULL OR e.hireDate <= :toDate)
+      """)
+  long countByAllEmployee(
+      @Param("status") EmployeeStatus status,
+      @Param("fromDate") LocalDate fromDate,
+      @Param("toDate") LocalDate toDate
+  );
+
+  @Query("""
+      SELECT COUNT(e)
+      FROM Employee e
       WHERE e.status = :status
       AND e.hireDate BETWEEN :fromDate AND :toDate
       """)
