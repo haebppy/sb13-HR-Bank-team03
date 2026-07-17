@@ -45,21 +45,6 @@ public class LocalStructure implements Structure {
         return savedFileName;
     }
 
-
-//    public void write(Path path, InputStream in) {
-//        try(OutputStream out = out(path)){
-//           in.transferTo(out);
-//        } catch(IOException e) {
-//            e.printStackTrace();
-//        }
-//    }
-//
-//    private OutputStream out(Path path) throws IOException {
-//            OutputStream out = Files.newOutputStream(path);
-//            return new BufferedOutputStream(out);
-//    }
-
-
     @Override
     public InputStream get(Path path) {
         try {
